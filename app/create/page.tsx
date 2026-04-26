@@ -1,6 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppPreview from "@/components/AppPreview";
 import KidEditor from "@/components/KidEditor";
@@ -11,18 +10,17 @@ import { generateProjectFromPrompt } from "@/lib/generateProject";
 import { ProjectSchema } from "@/types/project";
 
 export default function CreatePage() {
-  const params = useSearchParams();
-  const initialPrompt = params.get("prompt") || "";
-  const [prompt, setPrompt] = useState(initialPrompt);
+  const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [project, setProject] = useState<ProjectSchema | undefined>(undefined);
 
-  const generate = async () => {
+  const generate = async (nextPrompt?: string) => {
+    const promptToUse = (nextPrompt ?? prompt).trim();
     setLoading(true);
     setError("");
 
-    const data = await generateProjectFromPrompt(prompt);
+    const data = await generateProjectFromPrompt(promptToUse);
     setLoading(false);
 
     if (!data.ok) {
@@ -34,13 +32,17 @@ export default function CreatePage() {
   };
 
   useEffect(() => {
-    if (initialPrompt) generate();
+    const qp = new URLSearchParams(window.location.search).get("prompt") || "";
+    if (!qp) return;
+    setPrompt(qp);
+    void generate(qp);
+    // intentionally only on first mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <main className="container">
-      <PromptBox prompt={prompt} setPrompt={setPrompt} onSubmit={generate} loading={loading} />
+      <PromptBox prompt={prompt} setPrompt={setPrompt} onSubmit={() => void generate()} loading={loading} />
       {error && <div className="card error">{error}</div>}
       <AppPreview project={project} />
       <KidEditor project={project} onUpdate={setProject} />
